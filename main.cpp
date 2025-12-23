@@ -11,6 +11,9 @@ int main() {
     yyparse();
 
     // Print the AST using the PrintVisitor
+    //TODO: create the semantic visitor and run it over the AST 
+    /*
     output::PrintVisitor printVisitor;
     program->accept(printVisitor);
+    */
 }
