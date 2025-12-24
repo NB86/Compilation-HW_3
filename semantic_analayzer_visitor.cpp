@@ -20,7 +20,6 @@ void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
 }
 
 void SemanticAnalayzerVisitor::visit(ast::FuncDecl &node) {
-    //TODO: parse the node params correctly. maybe when debugging.
     std::vector<ast::BuiltInType> arguments;
     arguments.reserve(node.formals->formals.size());
     std::transform(node.formals->formals.begin(), node.formals->formals.end(), std::back_inserter(arguments),
