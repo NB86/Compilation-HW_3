@@ -83,7 +83,7 @@ public:
     void visit(ast::Funcs &node) override;
 
 private:
-    int currect_offset;
+    int current_offset;
     std::stack<SymbolEntry> symbol_table;
     std::vector<FunctionSymbolEntry> function_symbol_table;
     output::ScopePrinter scope_printer;
