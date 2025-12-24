@@ -83,8 +83,17 @@ public:
     void visit(ast::Funcs &node) override;
 
 private:
-    int current_offset;
-    std::stack<SymbolEntry> symbol_table;
+    /*
+     Eeach scope requires new offset counter. therefore we maintaining stack of offets.
+     The last offset (head of the stack) belongs to the current scope.
+    */
+    std::stack<int> offset_stack;
+
+    /*
+     Each std::vector<SymbolEntry> in the wrapper vector, represnts a scope, 
+     and the elements inside this vector are the symbols in the scope. 
+    */
+    std::vector<std::vector<SymbolEntry>> symbol_table;
     std::vector<FunctionSymbolEntry> function_symbol_table;
     output::ScopePrinter scope_printer;
 };
