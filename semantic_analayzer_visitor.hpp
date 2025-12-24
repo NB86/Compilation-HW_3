@@ -8,8 +8,8 @@
 
 struct SymbolEntry {
     std::string name;
-    int offset;
     ast::BuiltInType type;
+    int offset;
 };
 
 struct FunctionSymbolEntry {
@@ -82,6 +82,8 @@ public:
 
     void visit(ast::Funcs &node) override;
 
+    output::ScopePrinter scope_printer;
+
 private:
     /*
      Eeach scope requires new offset counter. therefore we maintaining stack of offets.
@@ -95,5 +97,4 @@ private:
     */
     std::vector<std::vector<SymbolEntry>> symbol_table;
     std::vector<FunctionSymbolEntry> function_symbol_table;
-    output::ScopePrinter scope_printer;
 };
