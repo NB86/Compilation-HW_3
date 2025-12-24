@@ -14,7 +14,6 @@ std::shared_ptr<ast::Node> program;
 
 using namespace std;
 
-// TODO: Place any additional declarations here
 %}
 
 %token INT BYTE BOOL VOID
@@ -48,8 +47,6 @@ using namespace std;
 // While reducing the start variable, set the root of the AST
 Program:  Funcs { program = $1; }
 ;
-
-// TODO: Define grammar here
 
 Funcs: FuncDecl Funcs{$$= std::dynamic_pointer_cast<ast::Funcs>($2);
                         std::dynamic_pointer_cast<ast::Funcs>($$)->push_front(std::dynamic_pointer_cast<ast::FuncDecl>($1));}
