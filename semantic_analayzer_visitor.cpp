@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <iostream>
 
 #include "semantic_analayzer_visitor.hpp"
 
@@ -17,6 +18,8 @@ void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
     function_symbol_table.push_back(printi_entry);
 
     // Adding first all the symbols of the functions to the function_symbol_table attribute. 
+    bool has_valid_main = false;
+
     for (const auto& function : node.funcs) {
         std::vector<ast::BuiltInType> arguments;
         arguments.reserve(function->formals->formals.size());
@@ -26,11 +29,26 @@ void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
             });
         
         FunctionSymbolEntry function_entry = {function->id->value, offset_stack.top()++, function->return_type->type, arguments};
+        for (const auto& function_symbol : function_symbol_table) {
+            if (function_entry.name == function_symbol.name) {
+                output::errorDef(function->line, function_entry.name);
+            }
+        }
         scope_printer.emitFunc(function_entry.name, function_entry.return_type, function_entry.arguments);
         function_symbol_table.push_back(function_entry);
+
+        if (function_entry.name == "main" && function_entry.return_type == ast::BuiltInType::VOID && function_entry.arguments.size() == 0) {
+            has_valid_main = true;
+        }
+    }
+
+    if (!has_valid_main) {
+        output::errorMainMissing();
     }
 
     for (auto it = node.funcs.begin(); it != node.funcs.end(); ++it) {
+        // correction of 2 beacouse of 'print' and 'printi' functionns 
+        current_function = function_symbol_table[std::distance(node.funcs.begin(), it) + 2];
         (*it)->accept(*this);
     }
 }
@@ -67,6 +85,24 @@ void SemanticAnalayzerVisitor::visit(ast::If &node) {
     scope_printer.beginScope();
     //offset_stack.push(0);
     symbol_table.push_back(std::vector<SymbolEntry>());
+
+    // Check if condition is boolean expression
+    bool is_cond_bool = false;
+    if (typeid(*node.condition) == typeid(ast::Bool)) {
+        is_cond_bool = true;
+    } else if (typeid(*node.condition) == typeid(ast::ID)) {            
+        for (const auto& scope : symbol_table) {
+            for (const auto& symbol : scope) {
+                if (symbol.name == dynamic_cast<ast::ID*>(node.condition.get())->value && symbol.type == ast::BuiltInType::BOOL) {
+                    is_cond_bool = true;
+                }
+            }
+        }
+    }
+
+    if (!is_cond_bool) {
+        output::errorMismatch(node.condition->line);
+    }
 
     node.condition->accept(*this);
 
@@ -170,10 +206,67 @@ void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {
         }
     } 
 
+    // Check if init_exp appropriate
+    if (node.init_exp) {
+        if (typeid(*node.init_exp) == typeid(ast::ID)) {            
+        for (const auto& function : function_symbol_table) {
+                if (function.name == dynamic_cast<ast::ID*>(node.init_exp.get())->value) {
+                    output::errorDefAsFunc(node.line, function.name);
+                }
+            }
+        }
+    }
+
     SymbolEntry entry = {node.id->value, node.type->type, offset_stack.top()++};
     symbol_table.back().push_back(entry);
     scope_printer.emitVar(entry.name, entry.type, entry.offset);
 }
+
+void SemanticAnalayzerVisitor::visit(ast::Assign &node) {
+    // Check if variable exists
+    bool is_variable_exists = false;
+    for (const auto& scope : symbol_table) {
+        for (const auto& symbol : scope) {
+            if (symbol.name == node.id->value) {
+                is_variable_exists = true;
+            }
+        }
+    } 
+
+    if (!is_variable_exists) {
+        for (const auto& function : function_symbol_table) {
+            if (node.id->value == function.name) {
+                output::errorDefAsFunc(node.line, node.id->value);
+            }
+        }
+        output::errorUndef(node.line, node.id->value);
+    }
+}
+
+void SemanticAnalayzerVisitor::visit(ast::Call &node) {
+    // Check if the function exists
+    bool is_function_exists = false;
+    for (const auto& function : function_symbol_table) {
+        if (node.func_id->value == function.name) {
+            is_function_exists = true;
+        }
+    }
+
+    if (!is_function_exists) {
+
+        for (const auto& scope : symbol_table) {
+            for (const auto& variable : scope) {
+                if (node.func_id->value == variable.name) {
+                    output::errorDefAsVar(node.line, node.func_id->value);
+                }
+            }
+        }
+
+        output::errorUndefFunc(node.line, node.func_id->value);
+    }
+
+}
+
 
 void SemanticAnalayzerVisitor::visit(ast::Break &node) {
     if (!is_inside_while) {
@@ -184,6 +277,42 @@ void SemanticAnalayzerVisitor::visit(ast::Break &node) {
 void SemanticAnalayzerVisitor::visit(ast::Continue &node) {
     if (!is_inside_while) {
         output::errorUnexpectedContinue(node.line);
+    }
+}
+
+void SemanticAnalayzerVisitor::visit(ast::Return &node) {
+    ast::BuiltInType type_to_return = current_function.return_type;
+
+    if (!node.exp && type_to_return != ast::BuiltInType::VOID) {
+        output::errorMismatch(node.line);
+    }
+
+    switch (type_to_return) {
+        case ast::BuiltInType::VOID:
+            if (node.exp) {
+                output::errorMismatch(node.line);
+            }
+            break;
+        case ast::BuiltInType::BOOL:
+            if (typeid(*node.exp) != typeid(ast::Bool)) {
+                output::errorMismatch(node.line);
+            }
+            break;
+        case ast::BuiltInType::BYTE:
+            if (typeid(*node.exp) != typeid(ast::NumB)) {
+                output::errorMismatch(node.line);
+            }
+            break;
+        case ast::BuiltInType::INT:
+            if (typeid(*node.exp) != typeid(ast::Num)) {
+                output::errorMismatch(node.line);
+            }
+            break;
+        case ast::BuiltInType::STRING:
+            if (typeid(*node.exp) != typeid(ast::String)) {
+                output::errorMismatch(node.line);
+            }
+            break;
     }
 }
 
@@ -213,35 +342,6 @@ void SemanticAnalayzerVisitor::visit(ast::Cast &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::ExpList &node) {}
 
-void SemanticAnalayzerVisitor::visit(ast::Call &node) {
-    // Check if the function exists
-    bool is_function_exists = false;
-    for (const auto& function : function_symbol_table) {
-        if (node.func_id->value == function.name) {
-            is_function_exists = true;
-        }
-    }
-
-    if (!is_function_exists) {
-
-        for (const auto& scope : symbol_table) {
-            for (const auto& variable : scope) {
-                if (node.func_id->value == variable.name) {
-                    output::errorDefAsVar(node.line, node.func_id->value);
-                }
-            }
-        }
-
-        output::errorUndefFunc(node.line, node.func_id->value);
-    }
-
-}
-
-void SemanticAnalayzerVisitor::visit(ast::Return &node) {}
-
-void SemanticAnalayzerVisitor::visit(ast::Assign &node) {}
-
 void SemanticAnalayzerVisitor::visit(ast::Formal &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Formals &node) {}
-

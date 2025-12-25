@@ -1,4 +1,6 @@
 void foo(int x) {
     int x = 5;
 }
-void main() {}
+void main() {
+    return;
+}

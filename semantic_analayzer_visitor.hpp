@@ -97,5 +97,6 @@ private:
     */
     std::vector<std::vector<SymbolEntry>> symbol_table;
     std::vector<FunctionSymbolEntry> function_symbol_table;
+    FunctionSymbolEntry current_function;
     bool is_inside_while; 
 };
