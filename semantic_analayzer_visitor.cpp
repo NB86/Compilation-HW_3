@@ -41,7 +41,7 @@ void SemanticAnalayzerVisitor::visit(ast::FuncDecl &node) {
     std::vector<SymbolEntry> symbols_in_scope; 
     std::transform(node.formals->formals.begin(), node.formals->formals.end(), std::back_inserter(symbols_in_scope),
         [this](const std::shared_ptr<ast::Formal>& formal) {
-            SymbolEntry entry = {formal->id->value,formal->type->type ,offset_stack.top()--};
+            SymbolEntry entry = {formal->id->value, formal->type->type, offset_stack.top()--};
             scope_printer.emitVar(entry.name, entry.type, entry.offset);
             return entry;
         });
@@ -61,13 +61,9 @@ void SemanticAnalayzerVisitor::visit(ast::FuncDecl &node) {
 }
 
 void SemanticAnalayzerVisitor::visit(ast::If &node) {
-    /* 
-     Creating a new scope in the symbol_table attribute to the 'If' statment.
-     intialize the symbols in the scope with empty vector. 
-     Also, creating a new scope offset corresponding to the new scope.
-    */  
+    // Creating a new scope in the symbol_table attribute to the 'If' statment.
     scope_printer.beginScope();
-    offset_stack.push(0);
+    //offset_stack.push(0);
     symbol_table.push_back(std::vector<SymbolEntry>());
 
     node.condition->accept(*this);
@@ -75,13 +71,13 @@ void SemanticAnalayzerVisitor::visit(ast::If &node) {
     // Create a new scope if the 'then' code starts a scope
     if (typeid(*node.then) == typeid(ast::Statements)) {
         scope_printer.beginScope();
-        offset_stack.push(0);
+        //offset_stack.push(0);
         symbol_table.push_back(std::vector<SymbolEntry>());
 
         node.then->accept(*this);
 
         scope_printer.endScope();
-        offset_stack.pop();
+        //offset_stack.pop();
         symbol_table.pop_back();
     } else {
         node.then->accept(*this);
@@ -90,29 +86,25 @@ void SemanticAnalayzerVisitor::visit(ast::If &node) {
     
     // Remove the 'If' statment scope
     scope_printer.endScope();
-    offset_stack.pop();
+    //offset_stack.pop();
     symbol_table.pop_back();
 
     if (node.otherwise) {
-        /* 
-        Creating a new scope in the symbol_table attribute to the 'Else' statment.
-        intialize the symbols in the scope with empty vector. 
-        Also, creating a new scope offset corresponding to the new scope.
-        */  
+        // Creating a new scope in the symbol_table attribute to the 'Else' statment.
         scope_printer.beginScope();
-        offset_stack.push(0);
+        //offset_stack.push(0);
         symbol_table.push_back(std::vector<SymbolEntry>());
 
         // Create a new scope if the 'otherwise' code starts a scope
         if (typeid(*node.otherwise) == typeid(ast::Statements)) {
             scope_printer.beginScope();
-            offset_stack.push(0);
+            //offset_stack.push(0);
             symbol_table.push_back(std::vector<SymbolEntry>());
 
             node.otherwise->accept(*this);
 
             scope_printer.endScope();
-            offset_stack.pop();
+            //offset_stack.pop();
             symbol_table.pop_back();
         } else {
             node.otherwise->accept(*this);
@@ -120,9 +112,48 @@ void SemanticAnalayzerVisitor::visit(ast::If &node) {
 
         // Remove the 'Else' statment scope
         scope_printer.endScope();
-        offset_stack.pop();
+        //offset_stack.pop();
         symbol_table.pop_back();
     }
+}
+
+void SemanticAnalayzerVisitor::visit(ast::While &node) {
+    // Creating a new scope in the symbol_table attribute to the 'While' statment.
+    scope_printer.beginScope();
+    offset_stack.push(0);
+    symbol_table.push_back(std::vector<SymbolEntry>());
+
+    node.condition->accept(*this);
+
+    // Create a new scope if the 'body' code starts a scope
+    if (typeid(*node.body) == typeid(ast::Statements)) {
+        scope_printer.beginScope();
+        offset_stack.push(0);
+        symbol_table.push_back(std::vector<SymbolEntry>());
+
+        node.body->accept(*this);
+
+        scope_printer.endScope();
+        offset_stack.pop();
+        symbol_table.pop_back();   
+    }
+
+    // Remove the 'While' statment scope
+    scope_printer.endScope();
+    offset_stack.pop();
+    symbol_table.pop_back();
+}
+
+void SemanticAnalayzerVisitor::visit(ast::Statements &node) {
+    for (auto it = node.statements.begin(); it != node.statements.end(); ++it) {
+        (*it)->accept(*this);
+    }
+}
+
+void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {
+    SymbolEntry entry = {node.id->value, node.type->type, offset_stack.top()++};
+    symbol_table.back().push_back(entry);
+    scope_printer.emitVar(entry.name, entry.type, entry.offset);
 }
 
 void SemanticAnalayzerVisitor::visit(ast::Num &node) {}
@@ -153,17 +184,11 @@ void SemanticAnalayzerVisitor::visit(ast::ExpList &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Call &node) {}
 
-void SemanticAnalayzerVisitor::visit(ast::Statements &node) {}
-
 void SemanticAnalayzerVisitor::visit(ast::Break &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Continue &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Return &node) {}
-
-void SemanticAnalayzerVisitor::visit(ast::While &node) {}
-
-void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Assign &node) {}
 
