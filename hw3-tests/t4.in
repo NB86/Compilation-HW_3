@@ -1,0 +1,12 @@
+void func(byte b) {
+    printi(b);
+}
+
+void main() {
+    int x = 500;
+    // This is valid (explicit cast)
+    byte y = (byte)x;
+    
+    // This should fail: implicit cast from int to byte is not allowed
+    func(x); 
+}

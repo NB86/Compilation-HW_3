@@ -1,0 +1,11 @@
+void foo(int a, bool b) {
+    if (b) {
+        int c = a;
+        printi(c);
+    }
+}
+
+void main() {
+    byte z = 100b;
+    foo(5, true);
+}
