@@ -154,6 +154,15 @@ void SemanticAnalayzerVisitor::visit(ast::Statements &node) {
 }
 
 void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {
+    // Check if variable name is occupied
+    for (const auto& scope : symbol_table) {
+        for (const auto& symbol : scope) {
+            if (symbol.name == node.id->value) {
+                output::errorDef(node.line, node.id->value);
+            }
+        }
+    } 
+
     SymbolEntry entry = {node.id->value, node.type->type, offset_stack.top()++};
     symbol_table.back().push_back(entry);
     scope_printer.emitVar(entry.name, entry.type, entry.offset);
