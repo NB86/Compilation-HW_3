@@ -2,7 +2,7 @@
 
 #include "semantic_analayzer_visitor.hpp"
 
-SemanticAnalayzerVisitor::SemanticAnalayzerVisitor() {}
+SemanticAnalayzerVisitor::SemanticAnalayzerVisitor() : is_inside_while(false) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
     // adding global scope offset
@@ -124,6 +124,7 @@ void SemanticAnalayzerVisitor::visit(ast::While &node) {
     symbol_table.push_back(std::vector<SymbolEntry>());
 
     node.condition->accept(*this);
+    is_inside_while = true;
 
     // Create a new scope if the 'body' code starts a scope
     if (typeid(*node.body) == typeid(ast::Statements)) {
@@ -136,6 +137,8 @@ void SemanticAnalayzerVisitor::visit(ast::While &node) {
         scope_printer.endScope();
         offset_stack.pop();
         symbol_table.pop_back();   
+    } else {
+        node.body->accept(*this);
     }
 
     // Remove the 'While' statment scope
@@ -154,6 +157,12 @@ void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {
     SymbolEntry entry = {node.id->value, node.type->type, offset_stack.top()++};
     symbol_table.back().push_back(entry);
     scope_printer.emitVar(entry.name, entry.type, entry.offset);
+}
+
+void SemanticAnalayzerVisitor::visit(ast::Break &node) {
+    if (!is_inside_while) {
+        output::errorUnexpectedBreak(node.line);
+    }
 }
 
 void SemanticAnalayzerVisitor::visit(ast::Num &node) {}
@@ -183,8 +192,6 @@ void SemanticAnalayzerVisitor::visit(ast::Cast &node) {}
 void SemanticAnalayzerVisitor::visit(ast::ExpList &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Call &node) {}
-
-void SemanticAnalayzerVisitor::visit(ast::Break &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Continue &node) {}
 
