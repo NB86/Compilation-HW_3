@@ -1,6 +1,6 @@
 void main() {
     int x = 0;
-    while (x) { // must be bool
+    while (x) {
         x = x - 1;
     }
 }
