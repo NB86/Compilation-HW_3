@@ -165,6 +165,12 @@ void SemanticAnalayzerVisitor::visit(ast::Break &node) {
     }
 }
 
+void SemanticAnalayzerVisitor::visit(ast::Continue &node) {
+    if (!is_inside_while) {
+        output::errorUnexpectedContinue(node.line);
+    }
+}
+
 void SemanticAnalayzerVisitor::visit(ast::Num &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::NumB &node) {}
@@ -192,8 +198,6 @@ void SemanticAnalayzerVisitor::visit(ast::Cast &node) {}
 void SemanticAnalayzerVisitor::visit(ast::ExpList &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Call &node) {}
-
-void SemanticAnalayzerVisitor::visit(ast::Continue &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Return &node) {}
 
