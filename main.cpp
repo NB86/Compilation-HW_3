@@ -12,7 +12,11 @@ extern std::shared_ptr<ast::Node> program;
 int main() {
     // Parse the input. The result is stored in the global variable `program`
     yyparse();
-
+    
+    if (!program) {
+        std::cerr << "Fatal: AST root is null after parsing." << std::endl;
+        return 1;
+    }
     // Create the semantic visitor and run it over the AST
     SemanticAnalayzerVisitor visitor; 
     program->accept(visitor);
