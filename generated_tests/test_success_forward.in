@@ -1,0 +1,7 @@
+void main() {
+    foo();
+}
+
+void foo() {
+    print("bar");
+}

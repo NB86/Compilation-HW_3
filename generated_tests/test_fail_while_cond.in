@@ -1,0 +1,6 @@
+void main() {
+    int x = 0;
+    while (x) { // must be bool
+        x = x - 1;
+    }
+}

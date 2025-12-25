@@ -1,0 +1,6 @@
+void foo(int a, bool b, byte c) {
+    int d = a;
+}
+void main() {
+    foo(1, true, 10b);
+}
