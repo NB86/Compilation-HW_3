@@ -1,0 +1,7 @@
+void main() {
+    int x = 5;
+    if (true) {
+        // This should fail because 'x' is already defined in the parent scope (main)
+        int x = 10; 
+    }
+}

@@ -16,24 +16,26 @@ void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
     function_symbol_table.push_back(print_entry);
     function_symbol_table.push_back(printi_entry);
 
+    // Adding first all the symbols of the functions to the function_symbol_table attribute. 
+    for (const auto& function : node.funcs) {
+        std::vector<ast::BuiltInType> arguments;
+        arguments.reserve(function->formals->formals.size());
+        std::transform(function->formals->formals.begin(), function->formals->formals.end(), std::back_inserter(arguments),
+            [](const std::shared_ptr<ast::Formal>& formal) {
+                return formal->type->type; 
+            });
+        
+        FunctionSymbolEntry function_entry = {function->id->value, offset_stack.top()++, function->return_type->type, arguments};
+        scope_printer.emitFunc(function_entry.name, function_entry.return_type, function_entry.arguments);
+        function_symbol_table.push_back(function_entry);
+    }
+
     for (auto it = node.funcs.begin(); it != node.funcs.end(); ++it) {
         (*it)->accept(*this);
     }
 }
 
 void SemanticAnalayzerVisitor::visit(ast::FuncDecl &node) {
-    // Adding the function symbol to the function_symbol_table attribute. 
-    std::vector<ast::BuiltInType> arguments;
-    arguments.reserve(node.formals->formals.size());
-    std::transform(node.formals->formals.begin(), node.formals->formals.end(), std::back_inserter(arguments),
-        [](const std::shared_ptr<ast::Formal>& formal) {
-            return formal->type->type; 
-        });
-    
-    FunctionSymbolEntry function_entry = {node.id->value, offset_stack.top()++, node.return_type->type, arguments};
-    scope_printer.emitFunc(function_entry.name, function_entry.return_type, function_entry.arguments);
-    function_symbol_table.push_back(function_entry);
-
     // Creating a new scope in the symbol_table attribute and adding symbols for the arguments of the function. 
     // Also, creating a new scope offset corresponding to the new scope. 
     scope_printer.beginScope();
@@ -123,6 +125,10 @@ void SemanticAnalayzerVisitor::visit(ast::While &node) {
     offset_stack.push(0);
     symbol_table.push_back(std::vector<SymbolEntry>());
 
+    // Check if condition is boolean expression
+    if (typeid(*node.condition) != typeid(ast::Bool)) {
+        output::errorMismatch(node.condition->line);
+    }
     node.condition->accept(*this);
     is_inside_while = true;
 
@@ -141,6 +147,7 @@ void SemanticAnalayzerVisitor::visit(ast::While &node) {
         node.body->accept(*this);
     }
 
+    is_inside_while = false;
     // Remove the 'While' statment scope
     scope_printer.endScope();
     offset_stack.pop();
@@ -206,7 +213,29 @@ void SemanticAnalayzerVisitor::visit(ast::Cast &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::ExpList &node) {}
 
-void SemanticAnalayzerVisitor::visit(ast::Call &node) {}
+void SemanticAnalayzerVisitor::visit(ast::Call &node) {
+    // Check if the function exists
+    bool is_function_exists = false;
+    for (const auto& function : function_symbol_table) {
+        if (node.func_id->value == function.name) {
+            is_function_exists = true;
+        }
+    }
+
+    if (!is_function_exists) {
+
+        for (const auto& scope : symbol_table) {
+            for (const auto& variable : scope) {
+                if (node.func_id->value == variable.name) {
+                    output::errorDefAsVar(node.line, node.func_id->value);
+                }
+            }
+        }
+
+        output::errorUndefFunc(node.line, node.func_id->value);
+    }
+
+}
 
 void SemanticAnalayzerVisitor::visit(ast::Return &node) {}
 

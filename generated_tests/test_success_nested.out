@@ -5,9 +5,13 @@ main () -> void
   ---begin scope---
   a int 0
     ---begin scope---
-    b bool 1
       ---begin scope---
-      c int 2
+      b bool 1
+        ---begin scope---
+          ---begin scope---
+          c int 2
+          ---end scope---
+        ---end scope---
       ---end scope---
     ---end scope---
   ---end scope---

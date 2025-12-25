@@ -1,5 +1,0 @@
-int x;
-void main() {
-    int x = 5; 
-    printi(x);
-}
