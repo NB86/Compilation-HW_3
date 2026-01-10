@@ -3,6 +3,25 @@
 
 #include "semantic_analayzer_visitor.hpp"
 
+std::string TypeToString(ast::BuiltInType type)
+{
+    switch (type)
+    {
+    case ast::BuiltInType::INT:
+        return "int";
+    case ast::BuiltInType::BOOL:
+        return "bool";
+    case ast::BuiltInType::BYTE:
+        return "byte";
+    case ast::BuiltInType::VOID:
+        return "void";
+    case ast::BuiltInType::STRING:
+        return "string";
+    default:
+        return "unknown";
+    }
+}
+
 SemanticAnalayzerVisitor::SemanticAnalayzerVisitor() : is_inside_while(false) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
@@ -246,11 +265,16 @@ void SemanticAnalayzerVisitor::visit(ast::Assign &node) {
 void SemanticAnalayzerVisitor::visit(ast::Call &node) {
     // Check if the function exists
     bool is_function_exists = false;
+    FunctionSymbolEntry called_function;
+
     for (const auto& function : function_symbol_table) {
         if (node.func_id->value == function.name) {
             is_function_exists = true;
+            called_function = function;
         }
     }
+
+    node.args->accept(*this);
 
     if (!is_function_exists) {
 
@@ -264,6 +288,50 @@ void SemanticAnalayzerVisitor::visit(ast::Call &node) {
 
         output::errorUndefFunc(node.line, node.func_id->value);
     }
+
+    // Check if the passed args are apropriate
+    bool is_args_match = true;
+    if (node.args->exps.size() == called_function.arguments.size()) {
+        for (size_t index = 0; index < called_function.arguments.size(); ++index) {
+            auto argument = called_function.arguments[index];
+            std::shared_ptr<ast::Exp> arg_exp = node.args->exps[index];
+
+            switch (argument) {
+                case ast::BuiltInType::BOOL:
+                    if (typeid(*arg_exp) != typeid(ast::Bool)) {
+                        is_args_match = false;
+                        break;
+                    }
+                case ast::BuiltInType::BYTE:
+                    if (typeid(*arg_exp) != typeid(ast::NumB) && typeid(*arg_exp) != typeid(ast::Num)) {
+                        is_args_match = false;
+                        break;
+                    }
+                case ast::BuiltInType::INT:
+                    if (typeid(*arg_exp) != typeid(ast::Num) && typeid(*arg_exp) != typeid(ast::NumB)) {
+                        output::errorMismatch(node.line);
+                    }
+                    break;
+                case ast::BuiltInType::STRING:
+                    if (typeid(*arg_exp) != typeid(ast::String)) {
+                        output::errorMismatch(node.line);
+                    }
+                    break;
+            }
+        } 
+    } else {
+        is_args_match = false;
+    }
+
+    if (!is_args_match) {
+        std::vector<std::string> string_args; 
+        std::transform(called_function.arguments.begin(), called_function.arguments.end(), std::back_inserter(string_args),
+        [](const ast::BuiltInType argument) {
+            return TypeToString(argument);
+        });
+        output::errorPrototypeMismatch(node.line, node.func_id->value, string_args);
+    }
+
 
 }
 
