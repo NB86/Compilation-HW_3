@@ -3,7 +3,7 @@
 
 #include "semantic_analayzer_visitor.hpp"
 
-SemanticAnalayzerVisitor::SemanticAnalayzerVisitor() : is_inside_while(false) {}
+SemanticAnalayzerVisitor::SemanticAnalayzerVisitor() : number_of_while_inside(0) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
     // adding global scope offset
@@ -31,7 +31,7 @@ void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
         FunctionSymbolEntry function_entry = {function->id->value, offset_stack.top()++, function->return_type->type, arguments};
         for (const auto& function_symbol : function_symbol_table) {
             if (function_entry.name == function_symbol.name) {
-                output::errorDef(function->body->line, function_entry.name);
+                output::errorDef(function->formals->line, function_entry.name);
             }
         }
         scope_printer.emitFunc(function_entry.name, function_entry.return_type, function_entry.arguments);
@@ -59,12 +59,17 @@ void SemanticAnalayzerVisitor::visit(ast::FuncDecl &node) {
     scope_printer.beginScope();
     offset_stack.push(-1);
     std::vector<SymbolEntry> symbols_in_scope; 
-    std::transform(node.formals->formals.begin(), node.formals->formals.end(), std::back_inserter(symbols_in_scope),
-        [this](const std::shared_ptr<ast::Formal>& formal) {
-            SymbolEntry entry = {formal->id->value, formal->type->type, offset_stack.top()--};
-            scope_printer.emitVar(entry.name, entry.type, entry.offset);
-            return entry;
-        });
+    for (const auto& formal : node.formals->formals) {
+        for (const auto& symbol : symbols_in_scope) {
+            if (symbol.name == formal->id->value) output::errorDef(formal->line, formal->id->value);
+        }
+        for (const auto& function : function_symbol_table) {
+            if (function.name == formal->id->value) output::errorDef(formal->line, formal->id->value);
+        }
+        SymbolEntry entry = {formal->id->value, formal->type->type, offset_stack.top()--};
+        scope_printer.emitVar(entry.name, entry.type, entry.offset);
+        symbols_in_scope.push_back(entry);
+    }
         
     symbol_table.push_back(symbols_in_scope);
     offset_stack.top() = 0;
@@ -156,7 +161,7 @@ void SemanticAnalayzerVisitor::visit(ast::While &node) {
         output::errorMismatch(node.condition->line);
     }
     node.condition->accept(*this);
-    is_inside_while = true;
+    number_of_while_inside++;
 
     // Create a new scope if the 'body' code starts a scope
     if (typeid(*node.body) == typeid(ast::Statements)) {
@@ -173,7 +178,7 @@ void SemanticAnalayzerVisitor::visit(ast::While &node) {
         node.body->accept(*this);
     }
 
-    is_inside_while = false;
+    number_of_while_inside--;
     // Remove the 'While' statment scope
     scope_printer.endScope();
     offset_stack.pop();
@@ -195,6 +200,12 @@ void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {
             }
         }
     } 
+    
+    for (const auto& function : function_symbol_table) {
+        if (function.name == node.id->value) {
+            output::errorDef(node.line, node.id->value);
+        }
+    }
 
     // Check if init_exp appropriate
     if (node.init_exp) {
@@ -334,13 +345,13 @@ void SemanticAnalayzerVisitor::visit(ast::Call &node) {
 
 
 void SemanticAnalayzerVisitor::visit(ast::Break &node) {
-    if (!is_inside_while) {
+    if (number_of_while_inside == 0) {
         output::errorUnexpectedBreak(node.line);
     }
 }
 
 void SemanticAnalayzerVisitor::visit(ast::Continue &node) {
-    if (!is_inside_while) {
+    if (number_of_while_inside == 0) {
         output::errorUnexpectedContinue(node.line);
     }
 }

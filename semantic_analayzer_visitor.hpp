@@ -98,6 +98,6 @@ private:
     std::vector<std::vector<SymbolEntry>> symbol_table;
     std::vector<FunctionSymbolEntry> function_symbol_table;
     FunctionSymbolEntry current_function;
-    bool is_inside_while; 
+    int number_of_while_inside; 
     ast::BuiltInType getExpressionType(std::shared_ptr<ast::Exp> exp);
 };
