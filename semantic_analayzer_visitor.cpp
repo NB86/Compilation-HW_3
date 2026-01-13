@@ -3,25 +3,6 @@
 
 #include "semantic_analayzer_visitor.hpp"
 
-std::string TypeToString(ast::BuiltInType type)
-{
-    switch (type)
-    {
-    case ast::BuiltInType::INT:
-        return "int";
-    case ast::BuiltInType::BOOL:
-        return "bool";
-    case ast::BuiltInType::BYTE:
-        return "byte";
-    case ast::BuiltInType::VOID:
-        return "void";
-    case ast::BuiltInType::STRING:
-        return "string";
-    default:
-        return "unknown";
-    }
-}
-
 SemanticAnalayzerVisitor::SemanticAnalayzerVisitor() : is_inside_while(false) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
@@ -50,7 +31,7 @@ void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
         FunctionSymbolEntry function_entry = {function->id->value, offset_stack.top()++, function->return_type->type, arguments};
         for (const auto& function_symbol : function_symbol_table) {
             if (function_entry.name == function_symbol.name) {
-                output::errorDef(function->line, function_entry.name);
+                output::errorDef(function->body->line, function_entry.name);
             }
         }
         scope_printer.emitFunc(function_entry.name, function_entry.return_type, function_entry.arguments);
@@ -66,7 +47,7 @@ void SemanticAnalayzerVisitor::visit(ast::Funcs &node) {
     }
 
     for (auto it = node.funcs.begin(); it != node.funcs.end(); ++it) {
-        // correction of 2 beacouse of 'print' and 'printi' functionns 
+        // correction of 2 because of 'print' and 'printi' functionns 
         current_function = function_symbol_table[std::distance(node.funcs.begin(), it) + 2];
         (*it)->accept(*this);
     }
@@ -106,20 +87,9 @@ void SemanticAnalayzerVisitor::visit(ast::If &node) {
     symbol_table.push_back(std::vector<SymbolEntry>());
 
     // Check if condition is boolean expression
-    bool is_cond_bool = false;
-    if (typeid(*node.condition) == typeid(ast::Bool)) {
-        is_cond_bool = true;
-    } else if (typeid(*node.condition) == typeid(ast::ID)) {            
-        for (const auto& scope : symbol_table) {
-            for (const auto& symbol : scope) {
-                if (symbol.name == dynamic_cast<ast::ID*>(node.condition.get())->value && symbol.type == ast::BuiltInType::BOOL) {
-                    is_cond_bool = true;
-                }
-            }
-        }
-    }
+    ast::BuiltInType condType = getExpressionType(node.condition);
 
-    if (!is_cond_bool) {
+    if (condType != ast::BuiltInType::BOOL) {
         output::errorMismatch(node.condition->line);
     }
 
@@ -181,7 +151,8 @@ void SemanticAnalayzerVisitor::visit(ast::While &node) {
     symbol_table.push_back(std::vector<SymbolEntry>());
 
     // Check if condition is boolean expression
-    if (typeid(*node.condition) != typeid(ast::Bool)) {
+    ast::BuiltInType condType = getExpressionType(node.condition);
+    if (condType != ast::BuiltInType::BOOL) {
         output::errorMismatch(node.condition->line);
     }
     node.condition->accept(*this);
@@ -235,6 +206,18 @@ void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {
             }
         }
     }
+    
+    if (node.init_exp) {
+        ast::BuiltInType initType = getExpressionType(node.init_exp);
+        if (node.type->type == ast::BuiltInType::INT) {
+            if (initType != ast::BuiltInType::INT && initType != ast::BuiltInType::BYTE) {
+                output::errorMismatch(node.line);
+            }
+        } else if (node.type->type != initType) {
+            output::errorMismatch(node.line);
+        }
+        node.init_exp->accept(*this);
+    }
 
     SymbolEntry entry = {node.id->value, node.type->type, offset_stack.top()++};
     symbol_table.back().push_back(entry);
@@ -244,10 +227,12 @@ void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {
 void SemanticAnalayzerVisitor::visit(ast::Assign &node) {
     // Check if variable exists
     bool is_variable_exists = false;
+    ast::BuiltInType varType = ast::BuiltInType::VOID;
     for (const auto& scope : symbol_table) {
         for (const auto& symbol : scope) {
             if (symbol.name == node.id->value) {
                 is_variable_exists = true;
+                varType = symbol.type;
             }
         }
     } 
@@ -260,6 +245,16 @@ void SemanticAnalayzerVisitor::visit(ast::Assign &node) {
         }
         output::errorUndef(node.line, node.id->value);
     }
+    
+    ast::BuiltInType expType = getExpressionType(node.exp);
+    if (varType == ast::BuiltInType::INT) {
+        if (expType != ast::BuiltInType::INT && expType != ast::BuiltInType::BYTE) {
+            output::errorMismatch(node.line);
+        }
+    } else if (varType != expType) {
+        output::errorMismatch(node.line);
+    }
+    node.exp->accept(*this);
 }
 
 void SemanticAnalayzerVisitor::visit(ast::Call &node) {
@@ -273,8 +268,6 @@ void SemanticAnalayzerVisitor::visit(ast::Call &node) {
             called_function = function;
         }
     }
-
-    node.args->accept(*this);
 
     if (!is_function_exists) {
 
@@ -295,27 +288,30 @@ void SemanticAnalayzerVisitor::visit(ast::Call &node) {
         for (size_t index = 0; index < called_function.arguments.size(); ++index) {
             auto argument = called_function.arguments[index];
             std::shared_ptr<ast::Exp> arg_exp = node.args->exps[index];
+            ast::BuiltInType argType = getExpressionType(arg_exp);
 
             switch (argument) {
                 case ast::BuiltInType::BOOL:
-                    if (typeid(*arg_exp) != typeid(ast::Bool)) {
+                    if (argType != ast::BuiltInType::BOOL) {
                         is_args_match = false;
-                        break;
                     }
+                    break;
                 case ast::BuiltInType::BYTE:
-                    if (typeid(*arg_exp) != typeid(ast::NumB) && typeid(*arg_exp) != typeid(ast::Num)) {
+                    if (argType != ast::BuiltInType::BYTE) {
                         is_args_match = false;
-                        break;
                     }
+                    break;
                 case ast::BuiltInType::INT:
-                    if (typeid(*arg_exp) != typeid(ast::Num) && typeid(*arg_exp) != typeid(ast::NumB)) {
-                        output::errorMismatch(node.line);
+                    if (argType != ast::BuiltInType::INT && argType != ast::BuiltInType::BYTE) {
+                        is_args_match = false;
                     }
                     break;
                 case ast::BuiltInType::STRING:
-                    if (typeid(*arg_exp) != typeid(ast::String)) {
-                        output::errorMismatch(node.line);
+                    if (argType != ast::BuiltInType::STRING) {
+                        is_args_match = false;
                     }
+                    break;
+                default:
                     break;
             }
         } 
@@ -327,11 +323,12 @@ void SemanticAnalayzerVisitor::visit(ast::Call &node) {
         std::vector<std::string> string_args; 
         std::transform(called_function.arguments.begin(), called_function.arguments.end(), std::back_inserter(string_args),
         [](const ast::BuiltInType argument) {
-            return TypeToString(argument);
+            return output::toString(argument);
         });
         output::errorPrototypeMismatch(node.line, node.func_id->value, string_args);
     }
 
+    node.args->accept(*this);
 
 }
 
@@ -355,6 +352,12 @@ void SemanticAnalayzerVisitor::visit(ast::Return &node) {
         output::errorMismatch(node.line);
     }
 
+    if (node.exp) {
+        node.exp->accept(*this);
+    }
+
+    ast::BuiltInType expType = node.exp ? getExpressionType(node.exp) : ast::BuiltInType::VOID;
+
     switch (type_to_return) {
         case ast::BuiltInType::VOID:
             if (node.exp) {
@@ -362,22 +365,22 @@ void SemanticAnalayzerVisitor::visit(ast::Return &node) {
             }
             break;
         case ast::BuiltInType::BOOL:
-            if (typeid(*node.exp) != typeid(ast::Bool)) {
+            if (expType != ast::BuiltInType::BOOL) {
                 output::errorMismatch(node.line);
             }
             break;
         case ast::BuiltInType::BYTE:
-            if (typeid(*node.exp) != typeid(ast::NumB)) {
+            if (expType != ast::BuiltInType::BYTE) {
                 output::errorMismatch(node.line);
             }
             break;
         case ast::BuiltInType::INT:
-            if (typeid(*node.exp) != typeid(ast::Num)) {
+            if (expType != ast::BuiltInType::INT && expType != ast::BuiltInType::BYTE) {
                 output::errorMismatch(node.line);
             }
             break;
         case ast::BuiltInType::STRING:
-            if (typeid(*node.exp) != typeid(ast::String)) {
+            if (expType != ast::BuiltInType::STRING) {
                 output::errorMismatch(node.line);
             }
             break;
@@ -386,7 +389,11 @@ void SemanticAnalayzerVisitor::visit(ast::Return &node) {
 
 void SemanticAnalayzerVisitor::visit(ast::Num &node) {}
 
-void SemanticAnalayzerVisitor::visit(ast::NumB &node) {}
+void SemanticAnalayzerVisitor::visit(ast::NumB &node) {
+    if (node.value > 255) {
+        output::errorByteTooLarge(node.line, node.value);
+    }
+}
 
 void SemanticAnalayzerVisitor::visit(ast::String &node) {}
 
@@ -394,22 +401,117 @@ void SemanticAnalayzerVisitor::visit(ast::Bool &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::ID &node) {}
 
-void SemanticAnalayzerVisitor::visit(ast::BinOp &node) {}
+void SemanticAnalayzerVisitor::visit(ast::BinOp &node) {
+    node.left->accept(*this);
+    node.right->accept(*this);
+    ast::BuiltInType t1 = getExpressionType(node.left);
+    ast::BuiltInType t2 = getExpressionType(node.right);
+    if ((t1 != ast::BuiltInType::INT && t1 != ast::BuiltInType::BYTE) ||
+        (t2 != ast::BuiltInType::INT && t2 != ast::BuiltInType::BYTE)) {
+        output::errorMismatch(node.line);
+    }
+}
 
-void SemanticAnalayzerVisitor::visit(ast::RelOp &node) {}
+void SemanticAnalayzerVisitor::visit(ast::RelOp &node) {
+    node.left->accept(*this);
+    node.right->accept(*this);
+    ast::BuiltInType t1 = getExpressionType(node.left);
+    ast::BuiltInType t2 = getExpressionType(node.right);
+    if ((t1 != ast::BuiltInType::INT && t1 != ast::BuiltInType::BYTE) ||
+        (t2 != ast::BuiltInType::INT && t2 != ast::BuiltInType::BYTE)) {
+        output::errorMismatch(node.line);
+    }
+}
 
-void SemanticAnalayzerVisitor::visit(ast::Not &node) {}
+void SemanticAnalayzerVisitor::visit(ast::Not &node) {
+    node.exp->accept(*this);
+    if (getExpressionType(node.exp) != ast::BuiltInType::BOOL) {
+        output::errorMismatch(node.line);
+    }
+}
 
-void SemanticAnalayzerVisitor::visit(ast::And &node) {}
+void SemanticAnalayzerVisitor::visit(ast::And &node) {
+    node.left->accept(*this);
+    node.right->accept(*this);
+    if (getExpressionType(node.left) != ast::BuiltInType::BOOL ||
+        getExpressionType(node.right) != ast::BuiltInType::BOOL) {
+        output::errorMismatch(node.line);
+    }
+}
 
-void SemanticAnalayzerVisitor::visit(ast::Or &node) {}
+void SemanticAnalayzerVisitor::visit(ast::Or &node) {
+    node.left->accept(*this);
+    node.right->accept(*this);
+    if (getExpressionType(node.left) != ast::BuiltInType::BOOL ||
+        getExpressionType(node.right) != ast::BuiltInType::BOOL) {
+        output::errorMismatch(node.line);
+    }
+}
 
 void SemanticAnalayzerVisitor::visit(ast::Type &node) {}
 
-void SemanticAnalayzerVisitor::visit(ast::Cast &node) {}
+void SemanticAnalayzerVisitor::visit(ast::Cast &node) {
+    node.exp->accept(*this);
+    ast::BuiltInType t1 = node.target_type->type;
+    ast::BuiltInType t2 = getExpressionType(node.exp);
+    
+    if (t1 == t2) return;
+    if (t1 == ast::BuiltInType::INT && t2 == ast::BuiltInType::BYTE) return;
+    if (t1 == ast::BuiltInType::BYTE && t2 == ast::BuiltInType::INT) return;
+    
+    output::errorMismatch(node.line);
+}
 
-void SemanticAnalayzerVisitor::visit(ast::ExpList &node) {}
-
+void SemanticAnalayzerVisitor::visit(ast::ExpList &node) {
+    for (auto& exp : node.exps) {
+        exp->accept(*this);
+    }
+}
 void SemanticAnalayzerVisitor::visit(ast::Formal &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Formals &node) {}
+
+ast::BuiltInType SemanticAnalayzerVisitor::getExpressionType(std::shared_ptr<ast::Exp> exp) {
+    if (std::dynamic_pointer_cast<ast::Num>(exp)) return ast::BuiltInType::INT;
+    if (std::dynamic_pointer_cast<ast::NumB>(exp)) return ast::BuiltInType::BYTE;
+    if (std::dynamic_pointer_cast<ast::String>(exp)) return ast::BuiltInType::STRING;
+    if (std::dynamic_pointer_cast<ast::Bool>(exp)) return ast::BuiltInType::BOOL;
+    if (std::dynamic_pointer_cast<ast::Not>(exp)) return ast::BuiltInType::BOOL;
+    if (std::dynamic_pointer_cast<ast::RelOp>(exp)) return ast::BuiltInType::BOOL;
+    if (std::dynamic_pointer_cast<ast::And>(exp)) return ast::BuiltInType::BOOL;
+    if (std::dynamic_pointer_cast<ast::Or>(exp)) return ast::BuiltInType::BOOL;
+
+    if (auto binOp = std::dynamic_pointer_cast<ast::BinOp>(exp)) {
+        ast::BuiltInType left = getExpressionType(binOp->left);
+        ast::BuiltInType right = getExpressionType(binOp->right);
+        if (left == ast::BuiltInType::BYTE && right == ast::BuiltInType::BYTE)
+            return ast::BuiltInType::BYTE;
+        return ast::BuiltInType::INT;
+    }
+
+    if (auto id = std::dynamic_pointer_cast<ast::ID>(exp)) {
+        for (auto it = symbol_table.rbegin(); it != symbol_table.rend(); ++it) {
+            for (const auto& entry : *it) {
+                if (entry.name == id->value) {
+                    return entry.type;
+                }
+            }
+        }
+        return ast::BuiltInType::VOID;
+    }
+
+    if (auto call = std::dynamic_pointer_cast<ast::Call>(exp)) {
+        for (const auto& func : function_symbol_table) {
+            if (func.name == call->func_id->value) {
+                return func.return_type;
+            }
+        }
+        return ast::BuiltInType::VOID;
+    }
+
+    if (auto cast_node = std::dynamic_pointer_cast<ast::Cast>(exp)) {
+        return cast_node->target_type->type;
+    }
+
+    return ast::BuiltInType::VOID;
+}
