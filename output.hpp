@@ -8,6 +8,9 @@
 #include "nodes.hpp"
 
 namespace output {
+
+    std::string toString(ast::BuiltInType type);
+
     /* Error handling functions */
 
     void errorLex(int lineno);
