@@ -1,0 +1,5 @@
+ 
+//piazza 119 - should be ok  +
+void foo (int a) {int booga = 5;}
+void test (int a) {int booga = 5;}
+void main() {int booga = 5;}

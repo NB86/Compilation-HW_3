@@ -1,0 +1,4 @@
+//piazza 80 - should be errorDef +
+int main (int a) {int a = 5;}
+void main() {int a = 5;}
+

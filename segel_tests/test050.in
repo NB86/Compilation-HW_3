@@ -1,0 +1,8 @@
+//piazza 65 - should be errorDef   +
+void main() {
+	int a = 5;
+	int d = 7;
+	if (a>d)
+	int a = 3;  //returns error bc a is already defined
+}
+

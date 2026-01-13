@@ -1,0 +1,7 @@
+ 
+//piazza 114 - should be errorDef  +
+int foo() {int booga = 5;}
+void main() {
+	int x = 5;
+	int foo = x;
+}

@@ -1,0 +1,11 @@
+//piazza 96 - should be ok +
+int foo() {
+	while(true) {
+		{
+		return 5;
+		}
+		break;
+	}
+}
+void main() {int booga = 5;}
+ 

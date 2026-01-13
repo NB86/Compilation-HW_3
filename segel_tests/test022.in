@@ -1,0 +1,3 @@
+//piazza 80 - will not be checked!!!! (2 errors)
+void main() {int a = 5;}
+override int main (int a) {int x = 5;}

@@ -1,0 +1,8 @@
+//Ex3 pdf - should be ambiguousCall +
+override byte foo(int x) {return 5b;}
+override byte foo(byte x) {return 5b;}
+void main() {
+	foo(5);
+	int a = foo(2b);
+}
+

@@ -1,0 +1,7 @@
+//piazza 65 - should be errorUndef +
+void main() {
+	int a = 5;
+	int d = 7;
+	if (a>g) return;  //returns error bc g is not defined
+}
+

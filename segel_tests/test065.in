@@ -1,0 +1,6 @@
+ 
+
+//piazza 118 - should be typeMismatch -------------------------
+void main() {
+	bool x = (bool) true;
+}

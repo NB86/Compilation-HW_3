@@ -1,0 +1,8 @@
+ 
+
+//piazza 114 - should be errorUndef ------------------------------
+int foo() {int booga = 5;}
+void main() {
+	int x = 5;
+	foo = x;
+}

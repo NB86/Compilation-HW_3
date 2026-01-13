@@ -1,0 +1,6 @@
+ 
+//piazza 116 - should be typeMismatch --------------------------
+void foo() {
+	return 1;
+}
+void main() {int booga = 5;}

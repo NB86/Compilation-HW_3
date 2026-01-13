@@ -1,0 +1,5 @@
+ 
+//piazza 102 - should be errorUndef +
+void main() {
+	int x = x;
+}

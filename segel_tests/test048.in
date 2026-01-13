@@ -1,0 +1,10 @@
+ 
+//piazza 98 - should be ok +
+void main (){
+	while(true) {
+		break;
+		break;
+		break;
+		break;
+	}
+}

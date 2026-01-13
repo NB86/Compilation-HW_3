@@ -1,0 +1,8 @@
+
+//piazza 65 - should be ok with 1 scope for if +
+void main() {
+	int a = 5;
+	int d = 7;
+	if (a > d)
+	int c = 3;
+}

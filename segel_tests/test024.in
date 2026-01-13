@@ -1,0 +1,6 @@
+//piazza 84 - should be ambiguousCall +
+override int foo(int x, int y) {int booga = 5;}
+override bool foo(byte x, int y) {int booga = 5;}
+void main() {
+	int x = foo(5b,10);
+}

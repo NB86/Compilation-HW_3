@@ -1,0 +1,2 @@
+//piazza 80 - should be errorMainMissing +
+int main (int a) {int x = 5;}

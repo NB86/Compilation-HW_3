@@ -1,0 +1,3 @@
+ 
+//piazza 107 - should be errorMainMissing +
+void main (int a) {int booga = 5;}

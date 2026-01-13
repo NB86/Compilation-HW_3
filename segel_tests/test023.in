@@ -1,0 +1,5 @@
+//piazza 84 - should be errorDef  +
+int foo(int x, int y) {int a = 5;}
+void foo(int z, int x) {int a = 5;}
+void main() {int a = 5;}
+

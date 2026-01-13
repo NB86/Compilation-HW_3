@@ -1,0 +1,18 @@
+---begin global scope---
+print (string) -> void
+printi (int) -> void
+foo (int) -> void
+test (int) -> void
+main () -> void
+  ---begin scope---
+  a int -1
+  booga int 0
+  ---end scope---
+  ---begin scope---
+  a int -1
+  booga int 0
+  ---end scope---
+  ---begin scope---
+  booga int 0
+  ---end scope---
+---end global scope---

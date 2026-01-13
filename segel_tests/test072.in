@@ -1,0 +1,7 @@
+//piazza 70 - should be ok +
+void main() {
+	byte x;
+	byte y = (byte)x;
+	int z;
+	int p = (int)z;
+}

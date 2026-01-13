@@ -1,0 +1,9 @@
+//piazza 64 - should be ok +
+override int foo(int a) {return 5;}
+override int foo(int a, int y) {return 5;}
+override bool foo(int a) {return true;}
+override bool foo(byte a) {return true;}
+override int foo(byte a) {return 5;}
+override int foo(int a, bool y) {return 5;}
+override int foo(bool a, int y) {return 5;}
+void main() {return;}

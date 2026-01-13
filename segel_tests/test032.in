@@ -1,0 +1,5 @@
+ 
+//piazza 89 - errorOverrideWithoutDeclaration +
+override void foo(int a) {int booga = 5;}
+void foo(int a) {int booga = 5;}
+void main() {int booga = 5;}

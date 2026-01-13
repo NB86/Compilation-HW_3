@@ -1,0 +1,5 @@
+ 
+//piazza 103 - should be ok +
+override void foo(int x, bool y) {int booga = 5;}
+override void foo(bool x, int y) {int booga = 5;}
+void main() {int booga = 5;}

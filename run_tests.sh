@@ -11,7 +11,7 @@ NC='\033[0m' # No Color
 EXEC_NAME="./hw3"
 
 # Directories
-TESTS_DIR="./generated_tests/"
+TEST_DIRS=("./generated_tests/" "./hw3-tests/" "./segel_tests/")
 OUTPUT_DIR="./tests_results/"
 
 # Check for verbose flag
@@ -34,46 +34,53 @@ echo -e "${GREEN}============== The code compiled successfully ! ==============$
 rm -rf ${OUTPUT_DIR}
 mkdir -p ${OUTPUT_DIR}
 
-echo -e "${BLUE}============== Running Tests from ${TESTS_DIR} ==============${NC}"
-
 passed_tests=0
 total_tests=0
 
-# Loop over all .in files in the tests directory
-for test_file in ${TESTS_DIR}*.in; do
-    # Check if files exist to avoid error if directory is empty
-    [ -e "$test_file" ] || continue
-
-    # Increment total tests
-    total_tests=$((total_tests + 1))
-
-    # Extract filename without extension (e.g., "tests/t1.in" -> "t1")
-    filename=$(basename -- "$test_file")
-    test_name="${filename%.*}"
-    
-    expected_output="${TESTS_DIR}${test_name}.out"
-    actual_output="${OUTPUT_DIR}${test_name}.res"
-
-    # Run the test
-    # redirecting stderr to stdout (2>&1) as per instructions
-    $EXEC_NAME < "$test_file" > "$actual_output" 2>&1
-
-    # Compare output
-    diff_output=$(diff "$expected_output" "$actual_output")
-    
-    if [ -n "$diff_output" ]; then
-        echo -e "${RED}Failed test: ${test_name}!${NC}"
-        
-        # Check verbose flag to decide whether to print diff
-        if [ $VERBOSE -eq 1 ]; then
-            echo "Diff:"
-            diff -u "$expected_output" "$actual_output"
-            echo "------------------------------------------------"
-        fi
-    else
-        echo -e "${GREEN}Test ${test_name} passed!${NC}"
-        passed_tests=$((passed_tests + 1))
+for TESTS_DIR in "${TEST_DIRS[@]}"; do
+    if [ ! -d "$TESTS_DIR" ]; then
+        echo -e "${YELLOW}Directory $TESTS_DIR does not exist. Skipping.${NC}"
+        continue
     fi
+
+    echo -e "${BLUE}============== Running Tests from ${TESTS_DIR} ==============${NC}"
+
+    # Loop over all .in files in the tests directory
+    for test_file in ${TESTS_DIR}*.in; do
+        # Check if files exist to avoid error if directory is empty
+        [ -e "$test_file" ] || continue
+
+        # Increment total tests
+        total_tests=$((total_tests + 1))
+
+        # Extract filename without extension (e.g., "tests/t1.in" -> "t1")
+        filename=$(basename -- "$test_file")
+        test_name="${filename%.*}"
+        
+        expected_output="${TESTS_DIR}${test_name}.out"
+        actual_output="${OUTPUT_DIR}${test_name}.res"
+
+        # Run the test
+        # redirecting stderr to stdout (2>&1) as per instructions
+        $EXEC_NAME < "$test_file" > "$actual_output" 2>&1
+
+        # Compare output
+        diff_output=$(diff "$expected_output" "$actual_output")
+        
+        if [ -n "$diff_output" ]; then
+            echo -e "${RED}Failed test: ${test_name}!${NC}"
+            
+            # Check verbose flag to decide whether to print diff
+            if [ $VERBOSE -eq 1 ]; then
+                echo "Diff:"
+                diff -u "$expected_output" "$actual_output"
+                echo "------------------------------------------------"
+            fi
+        else
+            echo -e "${GREEN}Test ${test_name} passed!${NC}"
+            passed_tests=$((passed_tests + 1))
+        fi
+    done
 done
 
 # ================= Summary =================

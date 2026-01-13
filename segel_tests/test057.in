@@ -1,0 +1,5 @@
+ 
+//piazza 114 - should be ok with 2 scopes for if +
+void main() {
+	if(1==2) {int x = 5;}
+}

@@ -1,0 +1,8 @@
+//piazza 68 - should be ok (notice y) +
+override int foo(int a) {return 5;}
+override int foo(int a, int y) {return 5;}
+void main() {
+	int y = foo(5);
+	int z = foo(5,7);
+	return;
+}

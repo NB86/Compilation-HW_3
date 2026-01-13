@@ -1,0 +1,4 @@
+//piazza 73,92 - should be errorDef +
+override void foo(int a) {int a = 5;}
+override void foo(int a) {int a = 5;}
+void main() {int a = 5;}
