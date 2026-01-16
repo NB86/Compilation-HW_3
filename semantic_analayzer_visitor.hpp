@@ -96,6 +96,7 @@ private:
      and the elements inside this vector are the symbols in the scope. 
     */
     std::vector<std::vector<SymbolEntry>> symbol_table;
+    std::vector<SymbolEntry> symbols_in_current_scope; // used in formal parameters checking
     std::vector<FunctionSymbolEntry> function_symbol_table;
     FunctionSymbolEntry current_function;
     int number_of_while_inside; 

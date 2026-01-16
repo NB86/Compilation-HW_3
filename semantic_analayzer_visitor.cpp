@@ -186,8 +186,16 @@ void SemanticAnalayzerVisitor::visit(ast::While &node) {
 }
 
 void SemanticAnalayzerVisitor::visit(ast::Statements &node) {
-    for (auto it = node.statements.begin(); it != node.statements.end(); ++it) {
-        (*it)->accept(*this);
+    for (const auto& statement : node.statements) {
+        if (std::dynamic_pointer_cast<ast::Statements>(statement)) {
+            scope_printer.beginScope();
+            symbol_table.push_back(std::vector<SymbolEntry>());
+            statement->accept(*this);
+            symbol_table.pop_back();
+            scope_printer.endScope();
+        } else {
+            statement->accept(*this);
+        }
     }
 }
 
@@ -209,8 +217,9 @@ void SemanticAnalayzerVisitor::visit(ast::VarDecl &node) {
 
     // Check if init_exp appropriate
     if (node.init_exp) {
+        node.init_exp->accept(*this);
         if (typeid(*node.init_exp) == typeid(ast::ID)) {            
-        for (const auto& function : function_symbol_table) {
+            for (const auto& function : function_symbol_table) {
                 if (function.name == dynamic_cast<ast::ID*>(node.init_exp.get())->value) {
                     output::errorDefAsFunc(node.line, function.name);
                 }
@@ -410,7 +419,21 @@ void SemanticAnalayzerVisitor::visit(ast::String &node) {}
 
 void SemanticAnalayzerVisitor::visit(ast::Bool &node) {}
 
-void SemanticAnalayzerVisitor::visit(ast::ID &node) {}
+void SemanticAnalayzerVisitor::visit(ast::ID &node) {
+    for (auto it = symbol_table.rbegin(); it != symbol_table.rend(); ++it) {
+        for (const auto& entry : *it) {
+            if (entry.name == node.value) {
+                return;
+            }
+        }
+    }
+    for (const auto& func : function_symbol_table) {
+        if (func.name == node.value) {
+            return;
+        }
+    }
+    output::errorUndef(node.line, node.value);
+}
 
 void SemanticAnalayzerVisitor::visit(ast::BinOp &node) {
     node.left->accept(*this);
@@ -466,11 +489,12 @@ void SemanticAnalayzerVisitor::visit(ast::Cast &node) {
     ast::BuiltInType t1 = node.target_type->type;
     ast::BuiltInType t2 = getExpressionType(node.exp);
     
-    if (t1 == t2) return;
-    if (t1 == ast::BuiltInType::INT && t2 == ast::BuiltInType::BYTE) return;
-    if (t1 == ast::BuiltInType::BYTE && t2 == ast::BuiltInType::INT) return;
-    
-    output::errorMismatch(node.line);
+    if (!((t1 == ast::BuiltInType::INT && t2 == ast::BuiltInType::BYTE) ||
+          (t1 == ast::BuiltInType::BYTE && t2 == ast::BuiltInType::INT) ||
+          (t1 == ast::BuiltInType::INT && t2 == ast::BuiltInType::INT) ||
+          (t1 == ast::BuiltInType::BYTE && t2 == ast::BuiltInType::BYTE))) {
+        output::errorMismatch(node.line);
+    }
 }
 
 void SemanticAnalayzerVisitor::visit(ast::ExpList &node) {
